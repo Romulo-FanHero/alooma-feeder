@@ -12,7 +12,6 @@
 /*****************************************************/
 
 // Dependencies
-const winston = require('winston');
 const promise = require('bluebird');
 
 const fs = require('fs');
@@ -46,6 +45,8 @@ const post = promise.promisify(
 const MAX_CONCURRENCY = 10;
 
 // Helpers
+// non-blocking wait method
+const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Decompress binary file to string
 const extractPayload = async file => {
@@ -83,7 +84,7 @@ const deliver = async file => {
         }
 
         // Signal success
-        winston.info(`${file} uploaded in ${response.elapsedSeconds}s at ${response.endTime}`)
+        console.log(`${file} uploaded in ${response.elapsedSeconds}s at ${response.endTime}`)
         await writeEmptyFile(`./data/success/${file}`);
     }
     catch (err) {
@@ -116,10 +117,13 @@ const main = async () => {
     // List of files that still need to be loaded
     const files = dumpFiles.filter(f => successFiles.indexOf(f) < 0);
 
+    // Wait 30s before trying to deliver files
+    await wait(30000);
+
     // Try to deliver all files
     await promise.map(files, deliver, { concurrency:  MAX_CONCURRENCY });
 
     // End of execution message
-    winston.info('Execution finished gracefully');
+    console.log('Execution finished gracefully');
 };
 main().catch(errHdl);

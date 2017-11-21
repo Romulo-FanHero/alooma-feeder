@@ -1,0 +1,23 @@
+{
+  "name": "alooma-feeder",
+  "version": "1.0.0",
+  "description": "script to load compressed files with event batches to Alooma",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  },
+  "keywords": [
+    "alooma",
+    "feeder",
+    "compressed",
+    "dump"
+  ],
+  "author": "Romulo",
+  "license": "MIT",
+  "dependencies": {
+    "koa": "^2.4.1",
+    "koa-bodyparser": "^4.2.0",
+    "winston": "^2.4.0",
+    "winston-error": "^1.0.1"
+  }
+}

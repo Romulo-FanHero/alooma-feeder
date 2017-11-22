@@ -30,7 +30,6 @@ const reqRetry = require('requestretry');
 const post = promise.promisify(
     reqRetry.defaults({
         url: process.env.DESTINATION, // <-- ATTENTION
-        headers: { 'Content-Type': 'application/json', accept: 'application/json' },
         timeout: 30000,
         pool: {
             maxSockets: Infinity
@@ -49,15 +48,23 @@ const MAX_CONCURRENCY = 10;
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 // Decompress binary file to string
-const extractPayload = async file => {
-    const bin = await readFile(`./data/dump/${file}`);
-    return await unzip(bin);
+const extractPayload = file => {
+    var bin = fs.readFileSync(`./data/dump/${file}`);
+    if (!bin || Buffer.byteLength(bin) < 25) {
+        throw new Error(`BROKEN FILE2: ${file}`);
+    }
+    var uzip = zlib.unzipSync(bin).toString();
+    var payload = JSON.parse(uzip);
+    if (!payload || !payload.table || !payload.batch) {
+        throw new Error(`BROKEN FILE3: ${file}`);
+    }
+    return payload;
 };
 
 // Write a payload to a POST request and return the timing achieved
 // after the response was received
 const postPackage = async payload => {
-    const response = await post({ body: payload });
+    const response = await post({ json: payload });
     return {
         attempts: response.attempts,
         startTime: new Date(response.timingStart).toISOString(),
@@ -73,7 +80,7 @@ const writeEmptyFile = async path => (await close(await open(path, 'w')));
 const deliver = async file => {
     try {
         // Extract payload from file
-        const payload = await extractPayload(file);
+        const payload = extractPayload(file);
 
         // Send package and wait for response
         const response = await postPackage(payload);
@@ -90,7 +97,7 @@ const deliver = async file => {
     catch (err) {
         // Signal failure
         errHdl(err);
-        await writeEmptyFile(`./data/success/${fail}`);
+        await writeEmptyFile(`./data/success/${file}`);
     }
 };
 
@@ -118,7 +125,7 @@ const main = async () => {
     const files = dumpFiles.filter(f => successFiles.indexOf(f) < 0);
 
     // Wait 30s before trying to deliver files
-    await wait(30000);
+    await wait(5000);
 
     // Try to deliver all files
     await promise.map(files, deliver, { concurrency:  MAX_CONCURRENCY });
